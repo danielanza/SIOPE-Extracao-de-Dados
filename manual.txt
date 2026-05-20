@@ -1,0 +1,2188 @@
+Módulo de Controle Externo – SIOPE-TCs
+
+
+
+Ministério da Educação
+
+Fundo Nacional de Desenvolvimento da Educação
+
+Diretoria de Tecnologia e Inovação - DIRTI
+
+Coordenação-Geral de Desenvolvimento de Sistemas - FNDE
+
+
+
+Versão 2.0
+
+
+
+
+
+Sumário
+
+
+
+1. Controle de Revisão .......................................................................................................................... 2
+
+2. Necessidade da Demanda ................................................................................................................. 3
+
+3. Pré-Condições .................................................................................................................................. 3
+
+4. Requisição aos serviços ..................................................................................................................... 4
+
+4.1
+
+Requisição .......................................................................................................................................... 4
+
+5. Métodos disponibilizados pelo Tribunal de Contas ............................................................................ 5
+
+5.1
+
+Filtro ................................................................................................................................................... 5
+
+5.2
+
+Consulta Despesa ............................................................................................................................... 6
+
+5.3
+
+Consulta Receita ................................................................................................................................. 7
+
+5.4
+
+Consulta Retificadora ......................................................................................................................... 7
+
+5.5
+
+Consulta Função 12 ............................................................................................................................ 8
+
+5.6
+
+Consulta Informações Complementares ............................................................................................ 8
+
+6. Métodos disponibilizados pelo FNDE ................................................................................................. 9
+
+6.1
+
+Filtro ................................................................................................................................................... 9
+
+6.2
+
+Consulta Indicador ............................................................................................................................. 9
+
+6.3
+
+Consulta Divergência........................................................................................................................ 10
+
+6.4
+
+Consulta Receita ............................................................................................................................... 11
+
+6.5
+
+Consulta Despesa ............................................................................................................................. 11
+
+6.6
+
+Consulta Informações Complementares .......................................................................................... 12
+
+7. Informações adicionais ................................................................................................................... 13
+
+7.1 Fonte ........................................................................................................................................................ 13
+
+7.2 Indicadores .............................................................................................................................................. 13
+
+7.3 Informações Complementares ................................................................................................................ 16
+
+7.4 Orientações gerais ................................................................................................................................... 17
+
+8. Legendas ........................................................................................................................................ 18
+
+
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+1
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+1. Controle de Revisão
+
+Data
+
+Versão Descrição
+
+Autor
+
+Área
+
+10/10/2017 1.0
+
+Início documento
+
+Cláudio Gomes da Silva
+
+DIRTE
+
+18/10/2017 1.1
+
+Correção requisição conforme ressaltado pelo TC-RS
+
+Cláudio Gomes da Silva
+
+DIRTE
+
+17/01/2018 1.2
+
+Alteração regras de consulta e especificação de
+
+Cláudio Gomes da Silva
+
+DIRTE
+
+máscara
+
+02/10/2018 1.3
+
+Criado item 6.4 de orientações gerais
+
+Ulisses Anacleto Pereira
+
+FNDE
+
+Orlando
+
+19/09/2022 1.4
+
+Incluída orientação dos métodos que serão
+
+Ulisses Anacleto Pereira
+
+FNDE
+
+disponibilizados pelos TC’s.
+
+Orlando
+
+
+
+Ex: “Este método será disponibilizado pelo
+
+Tribunal de Contas.”
+
+
+
+Inclusão de novos indicadores (VAAT e IEI)
+
+
+
+27/06/2023 1.9
+
+Inclusão de novos métodos disponibilizados pelo
+
+Cláudio Gomes da Silva
+
+DIRTI
+
+FNDE
+
+24/04/2025 2.0
+
+Melhoria na especificação dos métodos
+
+Cláudio Gomes da Silva
+
+DIRTI
+
+disponibilizados pelo FNDE
+
+
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+2
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+2. Necessidade da Demanda
+
+Prover um WebService para a captação de dados, fornecidos pelos Tribunais de Contas do país, a serem usados na validação dos valores informados pelos Estados, Distrito Federal e Municípios ao Sistema de Informações sobre Orçamentos Públicos em Educação – SIOPE, visando assegurar a confiabilidade e fidedignidade dos dados declarados.
+
+O SIOPE, operacionalizado pelo FNDE, tem por objetivo coletar, processar e disponibilizar dados (orçamentários) relativos a receitas e investimentos públicos em educação da União, Estados, Distrito Federal e Municípios. Dentre as relevantes funcionalidades do sistema está a geração de indicadores legais, de dispêndio financeiro, de dispêndio com pessoal, de investimento por aluno, entre outros, apresentando vastas potencialidades para as atividades fiscalizatórias das Cortes de Contas (essencialmente, análise e subsídio para auditorias de caráter contábil e operacional).
+
+Esses dados são declarados pelos Poderes Executivos dos entes, que se responsabilizam pelas informações prestadas. Tal situação demanda a validação, pelos órgãos de controle, dos dados informados diretamente ao SIOPE.
+
+O Acordo de Cooperação Técnica nº 02/2017, celebrado em 04-07-2017 entre Atricon, IRB, Ministério da Educação e Fundo Nacional de Desenvolvimento da Educação – FNDE, contando também com a adesão de diversos Tribunais de Contas, foi firmado para o desenvolvimento e a implantação do presente Módulo de Controle Externo – MCE.
+
+3. Pré-Condições
+
+O acesso aos serviços neste documento é feito exclusivamente por programas autorizados sobre o protocolo de comunicação HTTP RESTFul.
+
+Todos os métodos a ser criado, deverá seguir obrigatoriamente o padrão estabelecido neste documento com a estrutura JSON, nome de atributo e nome de método.
+
+Todos os atributos e nome de método deverão ser em lowercase (minúsculo).
+
+Todos os end-point’s deverão terminar com o nome do método. Não poderá usar algo como: *metodo.json, metodo.do, metodo.php e etc. Exemplo: http://www.fnde.gov.br/webservices/siope/index.php/tc/metodo Caso o acesso aos métodos necessitar de autenticação, deverá ser feita via OAuth Conforme Abaixo: Requisição:
+
+POST /oauth HTTP/1.1
+
+Content-Type: application/json
+
+{
+
+"grant_type": "password",
+
+"client_id": "SIOPE",
+
+"username": "SIOPE",
+
+"password": "SIOPE"
+
+}
+
+
+
+Resposta:
+
+{
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+3
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+"access_token": "9646c593d0863be75d72bd7bf629377cd32e4385",
+
+"expires_in": 3600,
+
+"token_type": "Bearer",
+
+"scope": "",
+
+"refresh_token": "d36e717369786d8db0e0afa923ae3e4f3fa6ee21"
+
+}
+
+
+
+Caso os dados de login forem informados incorretamente, deverá lançar um status HTTP 400 com o resultado semelhante abaixo:
+
+{
+
+"type": "http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html",
+
+"title": "invalid_grant",
+
+"status": 401,
+
+"detail": "Invalid username and password combination"
+
+}
+
+
+
+Após a autenticação, o FNDE/TC passará a usar o Token através do cabeçalho Authorization em todos os métodos em que for necessário está autenticado. Ex.: GET /consulta/metodo HTTP/1.1
+
+Content-Type: application/json
+
+Authorization: Bearer 9646c593d0863be75d72bd7bf629377cd32e4385
+
+
+
+Para o consumo dos métodos, deverá ser informado entre os interessados, FNDE e TC, um login e senha e também quais métodos deverá ter permissão.
+
+Para efetivação da conexão entre o FNDE e os TC’s no mínimo os métodos Receita, Despesa e Funcao12
+
+devem ser implementados.
+
+4. Requisição aos serviços
+
+4.1 Requisição
+
+A maioria dos métodos terá como requisição padrão o filtro abaixo: GET /consulta/metodo
+
+?sgl_uf=DF
+
+&cod_municipio=110006
+
+&num_ano=2017
+
+&num_periodo=1 HTTP/1.1
+
+...
+
+
+
+Abaixo, especificação padrão dos atributos que serão usados para consumo dos métodos ou como resposta dos métodos.
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tam.
+
+RegEx
+
+
+
+dat_consulta
+
+Data e hora
+
+DT
+
+- -
+
+[\d]{4}-[\d]{2}-[\d]{2}[
+
+2018-01-15
+
+Timestamp
+
+|T][\d]{2}:[\d]{2}:[\d]{2}[|Z]*
+
+13:53:54
+
+ISO 8601
+
+sgl_uf
+
+Sigla da UF
+
+AN
+
+2
+
+[A-Z]{2}
+
+DF
+
+cod_municipio Código
+
+IBGE
+
+do NU
+
+6
+
+[\d]{7}
+
+3528205
+
+município
+
+num_ano
+
+Ano a ser consultado
+
+NU
+
+4
+
+[\d]{4}
+
+2017
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+4
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+num_periodo
+
+Bimestre (1,2,3,4,5,6)
+
+NU
+
+1
+
+[\d]
+
+1
+
+
+
+5. Métodos disponibilizados pelo Tribunal de Contas A maioria dos métodos a seguir deverá ser requisitada via GET com os parâmetros descritos no item 4.1.
+
+5.1 Filtro
+
+Os parâmetros comuns que serão usados para realizar o filtro são: <sgl_uf>, <cod_municipio>, <num_ano> e
+
+<num_periodo>.
+
+Segue abaixo alguns exemplos:
+
+• Caso não seja informado nenhum parâmetro, somente o <num_ano> (obrigatório), retornar todas as entidades municipais e estaduais e com todos os períodos.
+
+• Caso seja informado os parâmetros: <num_ano>; <cod_municipio>, retornar somente o município e todos os períodos.
+
+• Caso seja informado os parâmetros: <num_ano>; <cod_municipio>; <num_periodo>, retornar somente o municipio com e o periodo especificado.
+
+• Caso seja informado os parâmetros: <num_ano>; <sgl_uf>, retornar todos os municípios do estado informado e o estado.
+
+• Caso seja informado os parâmetros: <num_ano>; <cod_municipio>, e o <cod_municipio> for informado com o valor "-1", retornar somente os estados.
+
+Segue abaixo exemplos práticos:
+
+Exemplo 1:
+
+GET /consulta/metodo
+
+?sgl_uf=RS
+
+&cod_municipio=123
+
+&num_ano=2017
+
+&num_periodo=1
+
+HTTP/1.1
+
+...
+
+
+
+Retornar somente os dados do município, ano e período informado.
+
+Exemplo 2:
+
+GET /consulta/metodo
+
+?sgl_uf=RS
+
+&num_ano=2017
+
+&num_periodo=1
+
+HTTP/1.1
+
+...
+
+
+
+Retornar os dados de todos os municípios para o ano 2017 do 1º período.
+
+Exemplo 3:
+
+GET /consulta/metodo
+
+?sgl_uf=RS
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+5
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+&num_ano=2017
+
+HTTP/1.1
+
+...
+
+
+
+Retornar os dados de todos os municípios para o ano 2017 e de todos os períodos.
+
+Estrutura de resposta:
+
+{
+
+"dat_consulta": "2018-01-15 13:53:54",
+
+"ente": [
+
+{
+
+"sgl_uf": "AC",
+
+"cod_municipio": "",
+
+"num_ano": "2017",
+
+"num_periodo": "1",
+
+[...]
+
+},
+
+[...]
+
+]
+
+}
+
+
+
+5.2 Consulta Despesa
+
+Este método será disponibilizado pelo Tribunal de Contas.
+
+Requisição:
+
+GET /consulta/despesa?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"despesa": [
+
+{
+
+"cod_fonte": 111,
+
+"des_elemento_despesa": "Elemento",
+
+"vlr_despesa_empenhada": 1.0,
+
+"vlr_despesa_liquidada": 1.0,
+
+"vlr_despesa_paga": 1.0
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+despesa
+
+Conjunto de despesas
+
+AR
+
+-
+
+cod_fonte
+
+Conforme item 6.1
+
+NU
+
+5
+
+des_elemento_despesa
+
+Conforme novo PCASP
+
+AN
+
+30
+
+vlr_despesa_empenhada Valor da despesa empenhada NU
+
+15,2
+
+vlr_despesa_liquidada
+
+Valor da despesa liquidada
+
+NU
+
+15,2
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+6
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+vlr_despesa_paga
+
+Valor da despesa paga
+
+NU
+
+15,2
+
+
+
+5.3 Consulta Receita
+
+Este método será disponibilizado pelo Tribunal de Contas.
+
+Requisição:
+
+GET /consulta/receita ?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"receita": [
+
+{
+
+"cod_conta": "abc",
+
+"vlr_receita_realizada": 1.0
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+receita
+
+Conjunto de receitas
+
+AR
+
+-
+
+cod_conta
+
+Código da conta
+
+AN
+
+30
+
+vlr_receita_realizada
+
+Valor da receita realizada
+
+NU
+
+15,2
+
+
+
+5.4 Consulta Retificadora
+
+
+
+Este método será disponibilizado pelo Tribunal de Contas.
+
+Requisição:
+
+GET /consulta/retificadora
+
+?cod_tc=1
+
+&dat_consulta=2017-10-10T10:10:10Z
+
+&dat_inicio=2017-10-01T00:00:00Z
+
+&dat_fim=2017-10-02T00:00:00Z
+
+HTTP/1.1
+
+...
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+dat_inicio, dat_fim
+
+Periodo em que os municípios DT
+
+-
+
+retificaram os dados
+
+
+
+Resposta:
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+7
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+{
+
+"dat_consulta": "",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+“dat_retificadora": "2023-06-22 16:25:14”
+
+}
+
+]
+
+}
+
+
+
+5.5 Consulta Função 12
+
+Este método será disponibilizado pelo Tribunal de Contas.
+
+Requisição:
+
+GET /consulta/funcao12?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"valores": [
+
+{
+
+"cod_subfuncao": 123,
+
+"vlr_despesa_empenhada": 1.0,
+
+"vlr_despesa_liquidada": 1.0,
+
+"vlr_despesa_paga": 1.0
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+valores
+
+Conjunto de Valores
+
+AR
+
+-
+
+cod_subfuncao
+
+Código Subfunção
+
+NU
+
+5
+
+vlr_despesa_empenhada Valor da despesa empenhada NU
+
+15,2
+
+vlr_despesa_liquidada
+
+Valor da despesa liquidada
+
+NU
+
+15,2
+
+vlr_despesa_paga
+
+Valor da despesa paga
+
+NU
+
+15,2
+
+
+
+5.6 Consulta Informações Complementares
+
+Este método será disponibilizado pelo Tribunal de Contas.
+
+Requisição:
+
+GET /consulta/informacoescomplementares?... HTTP/1.1
+
+...
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+8
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"linhas": [
+
+{
+
+"num_linha": "1.1",
+
+"vlr_linha": 123.00
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+linhas
+
+Conjunto de informações linhas
+
+AR
+
+-
+
+num_linha
+
+Codigo indicador conforme item 6.3
+
+AN
+
+5
+
+vlr_linha
+
+Valor da linha
+
+NU
+
+15,2
+
+
+
+6. Métodos disponibilizados pelo FNDE
+
+6.1 Filtro
+
+
+
+Os parâmetros <num_ano>, <num_periodo> e (<sgl_uf> ou <cod_municipio>) é de preenchimento obrigatório. Devido ao volume de informações retornado, os cenários de consulta possíveis são conforme a seguir:
+
+Exemplo consulta por município:
+
+GET /tc/metodo
+
+?num_ano=2025
+
+&num_periodo=1
+
+&cod_municipio=120001
+
+HTTP/1.1
+
+...
+
+Aa
+
+Exemplo consulta por estado:
+
+GET /tc/metodo
+
+?num_ano=2025
+
+&num_periodo=1
+
+&sgl_uf=MG
+
+HTTP/1.1
+
+...
+
+
+
+6.2 Consulta Indicador
+
+
+
+Este método será disponibilizado pelo FNDE.
+
+Requisição:
+
+
+
+GET https://www.fnde.gov.br/webservices/siope/tc/indicador?... HTTP/1.1
+
+...
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+9
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"indicador": [
+
+{
+
+"cod_indicador": "1.1",
+
+"vlr_indicador": 1.0
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+indicador
+
+Conjunto de Indicadores
+
+AR
+
+-
+
+cod_indicador
+
+Código indicador conforme item 6.2
+
+AN
+
+5
+
+vlr_indicador
+
+Valor do indicador
+
+NU
+
+15,2
+
+
+
+6.3 Consulta Divergência
+
+Este método será disponibilizado pelo FNDE.
+
+Requisição:
+
+GET https://www.fnde.gov.br/webservices/siope/tc/divergencia?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2017-10-10T10:10:10Z",
+
+"ente": [
+
+{
+
+"sgl_uf": "DF",
+
+"cod_municipio": 123,
+
+"num_ano": 2017,
+
+"num_periodo": 1,
+
+"divergencia": [
+
+"descrição 01", "Descrição 02"
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+divergencia
+
+Conjunto de descrições
+
+AR[AN:200]
+
+-
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+10
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+6.4 Consulta Receita
+
+Este método será disponibilizado pelo FNDE.
+
+Requisição:
+
+GET https://www.fnde.gov.br/webservices/siope/tc/receita?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2023-06-22 16:25:14",
+
+"ente": [
+
+{
+
+"sgl_uf": "AC",
+
+"cod_municipio": "120001",
+
+"num_ano": "2022",
+
+"num_periodo": "1",
+
+"receita": [
+
+{
+
+"cod_conta": "10000000",
+
+"des_natureza": "Receitas Correntes",
+
+"vlr_previsao_atualizada": 123.45,
+
+"vlr_receita_realizada": 123.45,
+
+"vlr_intraorcamentaria": 123.45,
+
+"vlr_deducao_fundeb": 123.45,
+
+"vlr_outras_deducoes": 123.45
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+cod_conta
+
+Código exibição conta
+
+AN
+
+8
+
+des_natureza
+
+Descrição da conta / Natureza
+
+NA
+
+-
+
+vlr_previsao_atualizada
+
+Previsão Atualizada
+
+NU
+
+15,2
+
+vlr_receita_realizada
+
+Receita atualizada
+
+NU
+
+15,2
+
+vlr_intraorcamentaria
+
+Intra-orçamentária
+
+NU
+
+15,2
+
+vlr_deducao_fundeb
+
+Dedução FUNDEB
+
+NU
+
+15,2
+
+vlr_outras_deducoes
+
+Outras deduções
+
+NU
+
+15,2
+
+
+
+6.5 Consulta Despesa
+
+Este método será disponibilizado pelo FNDE.
+
+Requisição:
+
+GET https://www.fnde.gov.br/webservices/siope/tc/despesa?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2023-06-26 14:03:33",
+
+"ente": [
+
+{
+
+"sgl_uf": "AC",
+
+"cod_municipio": "120001",
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+11
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+"num_ano": "2022",
+
+"num_periodo": "1",
+
+"despesa": [
+
+{
+
+"cod_fonte": "500",
+
+"cod_subfuncao": "361",
+
+"cod_subsubfuncao": "361",
+
+"nom_classificacao": "Despesas Próprias",
+
+"cod_conta": "30000000",
+
+"des_natureza": "Despesas Correntes",
+
+"vlr_empenhado": 123.45,
+
+"vlr_liquidado": 123.45,
+
+"vlr_pago": 123.45
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+cod_fonte
+
+Código Fonte
+
+NU
+
+5
+
+cod_subfuncao
+
+Código Subfunção
+
+NU
+
+5
+
+cod_subsubfuncao
+
+Código Sub Subfunção
+
+NU
+
+5
+
+nom_classificacao
+
+Classificação
+
+AN
+
+-
+
+cod_conta
+
+Código exibição conta
+
+AN
+
+8
+
+des_natureza
+
+Descrição da conta / Natureza
+
+NA
+
+-
+
+vlr_empenhado
+
+Valor empenhado
+
+NU
+
+15,2
+
+vlr_liquidado
+
+Valor liquidado
+
+NU
+
+15,2
+
+vlr_pago
+
+Valor Pago
+
+NU
+
+15,2
+
+
+
+6.6 Consulta Informações Complementares
+
+Este método será disponibilizado pelo FNDE.
+
+Requisição:
+
+GET https://www.fnde.gov.br/webservices/siope/tc/informacoescomplementares?... HTTP/1.1
+
+...
+
+
+
+Resposta:
+
+{
+
+"dat_consulta": "2023-06-27 13:44:19",
+
+"ente": [
+
+{
+
+"sgl_uf": "AC",
+
+"cod_municipio": "120001",
+
+"num_ano": "2022",
+
+"num_periodo": "1",
+
+"linhas": [
+
+{
+
+"num_linha": "11",
+
+"vlr_linha": 123.45
+
+}
+
+]
+
+}
+
+]
+
+}
+
+
+
+Atributo
+
+Descrição
+
+Tipo
+
+Tamanho
+
+num_linha
+
+Nº Linha
+
+NU
+
+5
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+12
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+vlr_linha
+
+Valor
+
+NU
+
+15,2
+
+
+
+7. Informações adicionais
+
+7.1 Fonte
+
+Fontes utilizadas até 2020
+
+Código
+
+Nomenclatura da Fonte
+
+111
+
+Recursos próprios de impostos e transferências - vinculados à Educação 112
+
+Recursos do FUNDEB 60%
+
+113
+
+Recursos do FUNDEB 40%
+
+114
+
+Recursos Complementação do FUNDEB
+
+115
+
+Recursos do Salário-Educação
+
+117
+
+Recursos do Programa Nacional de Alimentação Escolar -PNAE
+
+118
+
+Recursos do Programa Nacional de Apoio ao Transporte Escolar - PNATE
+
+116
+
+Recursos do Programa Dinheiro Direto na Escola - PDDE
+
+119
+
+Outras Transferências de Recursos do FNDE
+
+190
+
+Outros Recursos Destinados à Educação
+
+120
+
+Transferências de Convênios - Educação
+
+130
+
+Operações de Crédito Vinculadas à Educação
+
+140
+
+Royalties do Petróleo destinados à Educação
+
+121
+
+Receita pela Prestação de Serviços Educacionais
+
+
+
+Fontes utilizadas de 2021 em diante.
+
+540
+
+Transferências do FUNDEB Impostos e Transferências de Impostos 541
+
+Transferências do FUNDEB Complementação da União VAAF
+
+542
+
+Transferências do FUNDEB Complementação da União VAAT
+
+543
+
+Transferências do FUNDEB Complementação da União VAAR
+
+544
+
+Recursos de Precatórios do FUNDEF
+
+550
+
+Transferência do Salário-Educação
+
+551
+
+Transferências de Recursos do FNDE referentes ao Programa Dinheiro Direto na Escola (PDDE) 552
+
+Transferências de Recursos do FNDE referentes ao Programa Nacional de Alimentação Escolar (PNAE) 553
+
+Transferências de Recursos do FNDE Referentes ao Programa Nacional de Apoio ao Transporte Escolar (PNATE) 569
+
+Outras Transferências de Recursos do FNDE
+
+570
+
+Transferências do Governo Federal referentes a Convênios e Instrumentos Congêneres vinculados à Educação 571
+
+Transferências do Estado referentes a Convênios e Instrumentos Congêneres vinculados à Educação 572
+
+Transferências de Municípios referentes a Convênios e Instrumentos Congêneres vinculados à Educação 573
+
+Royalties do Petróleo e Gás Natural Vinculados à Educação 574
+
+Operações de Crédito Vinculadas à Educação
+
+575
+
+Transferência de Convênios e Instrumentos Congêneres 599
+
+Outros Recursos Vinculados à Educação
+
+7.2 Indicadores
+
+1 – Indicadores Legais
+
+Código
+
+Descrição
+
+Percentual de aplicação das receitas de impostos e transferências vinculadas à educação em MDE
+
+1.1
+
+(mínimo de 25% para estados, DF e municípios)
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+13
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+Percentual de aplicação do FUNDEF ou FUNDEB na remuneração dos profissionais do magistério (mínimo 1.2
+
+de 70%)
+
+Percentual de aplicação do FUNDEF ou FUNDEB em despesas com MDE, que não remuneração do 1.3
+
+magistério (máximo de 30%)
+
+1.4
+
+Percentual das receitas do FUNDEF ou FUNDEB não aplicadas no exercício (máximo de 10%) Percentual de aplicação em Despesas de Capital da complementação da União - VAAT - FUNDEB (Mínimo 1.5
+
+de 15%)
+
+Percentual de aplicação em Despesas na Educação Infantil da complementação da União - VAAT -
+
+1.6
+
+FUNDEB (Proporção 50% do VAAT Total)
+
+Indicador referido no parágrafo único do art. 28 da Lei nº 14.113, de 2020, para aplicação, pelos 1.7
+
+Municípios, de recursos da complementação-VAAT na educação infantil.
+
+
+
+2 - Indicadores de Dispêndio Financeiro
+
+Código
+
+Descrição
+
+2.1
+
+Percentual dos recursos do FUNDEB aplicados na educação infantil 2.2
+
+Percentual dos recursos do FUNDEB aplicados no ensino fundamental 2.3
+
+Percentual dos recursos do FUNDEB aplicados no ensino médio 2.4
+
+Percentual das despesas com educação infantil em relação à despesa total com educação 2.5
+
+Percentual das despesas com ensino fundamental em relação à despesa total com educação 2.6
+
+Percentual das despesas com ensino médio em relação à despesa total com educação 2.7
+
+Percentual das despesas com educação superior em relação à despesa total com educação 2.8
+
+Percentual das despesas em educação em relação às despesas de todas as áreas 2.9
+
+Percentual das despesas com alimentação escolar em relação à despesa total com educação 2.10
+
+Investimento com material didático por aluno da educação básica 2.11
+
+Percentual de despesas correntes em educação em relação à despesa total em MDE
+
+2.12
+
+Percentual de investimentos de capital em educação em relação à despesa total em MDE
+
+
+
+3 - Indicadores de Dispêndio com Pessoal
+
+Código
+
+Descrição
+
+Percentual das despesas com aposentadorias e pensões da área educacional em relação às despesas 3.1
+
+totais com MDE
+
+Percentual das despesas com pessoal e encargos sociais da área educacional em relação à despesa total 3.2
+
+com MDE
+
+3.5
+
+Percentual das despesas com professores em relação à despesa total com MDE
+
+3.6
+
+Percentual das despesas com profissionais não docentes em relação à despesa total com MDE
+
+
+
+4 - Indicadores de Investimento por Aluno
+
+Código
+
+Descrição
+
+4.1
+
+Investimento educacional por aluno da educação infantil 4.2
+
+Investimento educacional por aluno do ensino fundamental 4.3
+
+Investimento educacional por aluno do ensino médio 4.4
+
+Investimento educacional por aluno da educação superior 4.5
+
+Investimento educacional por aluno da educação de jovens e adultos 4.6
+
+Investimento educacional por aluno da educação especial 4.7
+
+Investimento educacional por aluno da educação profissional 4.8
+
+Investimento educacional por aluno da educação básica 4.9
+
+Investimento educacional por aluno
+
+4.10
+
+Despesa com professores por aluno da educação básica Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+14
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+4.11
+
+Despesas com profissionais não docentes da área educacional por aluno da educação básica Percentual de investimento por aluno da educação superior em relação ao investimento por aluno da 4.12
+
+educação básica
+
+
+
+5 - Indicadores de Desenvolvimento Educacional
+
+Código
+
+Descrição
+
+5.1
+
+Índice de Desenvolvimento da Educação Básica - IDEB - Séries Iniciais 5.3
+
+Taxa de Aprovação do Ensino Fundamental
+
+5.5
+
+Taxa de Reprovação do Ensino Fundamental
+
+5.7
+
+Taxa de Abandono do Ensino Fundamental
+
+
+
+6 - Indicadores de Composição da Receita
+
+Código
+
+Descrição
+
+6.1
+
+Percentual das receitas de transferências realizadas pelo FNDE em relação à receita total 6.2
+
+Percentual das receitas de impostos em relação à receita total.
+
+6.3
+
+Percentual das receitas de transferências constitucionais em relação à receita total.
+
+
+
+7 - Resultado Financeiro do Exercício
+
+Código
+
+Descrição
+
+7.1
+
+Superávit/Déficit do ente federado no exercício
+
+7.2
+
+Saldo financeiro do FUNDEB no exercício atual
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+15
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+7.3 Informações Complementares
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+16
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+7.4 Orientações gerais
+
+
+
+Consulta receita:
+
+
+
+
+
+Retornar a receita total do município, ou seja, as receitas da administração direta e indireta.
+
+
+
+
+
+Retornar todas as contas analíticas e sintéticas.
+
+
+
+
+
+Despesa:
+
+
+
+
+
+Até 2020 retornar somente as contas analíticas da função 12.
+
+
+
+
+
+A partir de 2021 retornar as contas analíticas e sintéticas da função 12.
+
+
+
+
+
+Agrupar por fonte e conta
+
+
+
+
+
+Função12:
+
+
+
+
+
+Retornar as despesas da função 12 agrupadas por subfunção.
+
+
+
+As consultas de receitas, despesas, etc devem sempre retornar os dados acumulados até o período consultado, ou seja, se estivermos consultando os dados do 2º bimestre de 2018, devem ser retornados os dados de janeiro até abril de 2018, cumulativamente.
+
+
+
+Para validação prévia de todos os métodos, elaboramos um script validador para que vocês possam efetuar uma varredura na sintaxe dos métodos do WS (receita, despesa, funcao12 e informações complementares).
+
+
+
+Para isso foi criado o JSON Schema, disponível em ftp://ftp2.fnde.gov.br/DADOS_SIOPE/MCE-SIOPE/
+
+, que pode ser usado na IDE https://www.jsonschemavalidator.net/ ou em outra ferramenta de preferência.
+
+Exemplo:
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+17
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
+8. Legendas
+
+Sigla
+
+Descrição
+
+AN
+
+Alfanumérico
+
+AS
+
+Alfanumérico sem caracteres especiais
+
+BL
+
+Booleano
+
+NU
+
+Numérico
+
+DT
+
+Data e/ou Hora
+
+CH
+
+Char
+
+AR
+
+Array
+
+
+
+Metodologia de Desenvolvimento d e
+
+Fundo Nacional de Desenvolvimento da Educação -FNDE
+
+18
+
+
+
+Sistemas | versão 4.0
+
+Diretoria de Tecnologia e Inovação DIRTI
+
+
+
+
+
