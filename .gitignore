@@ -1,2 +1,10 @@
 __pycache__/
 Registro Receita - Todos Entes/cache/
+
+# Histórico de extrações anteriores (~1 GB por extração arquivada)
+Dados Antigos/
+
+# Logs gerados pelas execuções
+extracao_log.txt
+extracao_err.txt
+consolidacao_log.txt

@@ -2,7 +2,7 @@
 Extrair Todas Receitas - Todos os Entes
 ========================================
 Baixa os registros de receita (período 6) do SIOPE para todos os municípios
-e estados, anos 2019-2026, e salva em planilhas Excel organizadas por UF.
+e estados, anos 2019-2025, e salva em planilhas Excel organizadas por UF.
 
 Estrutura de saída:
   Registro Receita - Todos Entes/
@@ -14,7 +14,7 @@ Uso:
   python "Extrair Todas Receitas - Todos os Entes.py"            # baixa + compila
   python "Extrair Todas Receitas - Todos os Entes.py" --baixar   # só baixa
   python "Extrair Todas Receitas - Todos os Entes.py" --compilar # só compila Excel
-  python "Extrair Todas Receitas - Todos os Entes.py" --forcar   # redownload tudo
+  python "Extrair Todas Receitas - Todos os Entes.py" --forcar   # redownload tudo (faz backup do cache anterior)
 """
 
 import os
@@ -22,6 +22,7 @@ import sys
 import csv
 import json
 import time
+import shutil
 import threading
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -38,13 +39,14 @@ from openpyxl.utils import get_column_letter
 BASE_DIR       = Path(__file__).parent
 LISTA_ENTES    = BASE_DIR / "Lista de Entes.xlsx"
 OUTPUT_DIR     = BASE_DIR / "Registro Receita - Todos Entes"
+HISTORICO_DIR  = BASE_DIR / "Dados Antigos"   # arquivo morto das extrações anteriores
 CACHE_DIR      = OUTPUT_DIR / "cache"
 MUN_DIR        = OUTPUT_DIR / "Municipios"
 EST_DIR        = OUTPUT_DIR
 PROGRESSO_FILE = OUTPUT_DIR / "progresso.json"
 
 API_URL        = "https://www.fnde.gov.br/webservices/siope/tc/receita"
-ANOS           = list(range(2019, 2027))   # 2019 a 2026
+ANOS           = list(range(2019, 2026))   # 2019 a 2025
 PERIODO        = 6
 MAX_LINHAS     = 500_000
 MAX_WORKERS    = 4
@@ -59,6 +61,54 @@ COLUNAS = [
 ]
 
 # ─────────────────────────────────────────────
+# ARQUIVAMENTO DA EXTRAÇÃO ANTERIOR
+# ─────────────────────────────────────────────
+def fazer_backup_output():
+    """
+    Move OUTPUT_DIR para 'Dados Antigos/Extração DD-MM-AA' antes de iniciar
+    uma nova extração completa, preservando o histórico da última extração.
+    A data usada é a do arquivo mais antigo no cache (data inicial da extração).
+
+    A planilha consolidada vigente (`Dados SIOPE - ICMS e ISS.xlsx`) é copiada
+    junto, para que cada pasta do histórico contenha o cache, os Excel por UF e
+    a consolidação correspondente àquela extração.
+    """
+    if not OUTPUT_DIR.exists():
+        return
+
+    csvs = list(CACHE_DIR.glob("*.csv")) if CACHE_DIR.exists() else []
+    if csvs:
+        data_ts  = min(p.stat().st_mtime for p in csvs)
+        data_str = time.strftime("%d-%m-%y", time.localtime(data_ts))
+    else:
+        data_str = time.strftime("%d-%m-%y")
+
+    HISTORICO_DIR.mkdir(exist_ok=True)
+
+    nome_backup = HISTORICO_DIR / f"Extração {data_str}"
+    if nome_backup.exists():
+        sufixo = 2
+        while True:
+            candidato = HISTORICO_DIR / f"Extração {data_str} - {sufixo}"
+            if not candidato.exists():
+                nome_backup = candidato
+                break
+            sufixo += 1
+
+    print(f"Arquivando extração anterior em: {HISTORICO_DIR.name}/{nome_backup.name}")
+    OUTPUT_DIR.rename(nome_backup)
+
+    # Leva a planilha consolidada vigente para dentro do histórico
+    consolidada = BASE_DIR / "Dados SIOPE - ICMS e ISS.xlsx"
+    if consolidada.exists():
+        destino = nome_backup / f"Dados SIOPE - ICMS e ISS ({data_str}).xlsx"
+        shutil.copy2(consolidada, destino)
+        print(f"  Planilha consolidada copiada: {destino.name}")
+
+    print("Arquivamento concluído.\n")
+
+
+# ─────────────────────────────────────────────
 # PROGRESSO (thread-safe)
 # ─────────────────────────────────────────────
 _lock_progresso = threading.Lock()
@@ -71,8 +121,25 @@ def carregar_progresso():
     return set()
 
 def salvar_progresso(concluidos):
-    with open(PROGRESSO_FILE, "w") as f:
-        json.dump(list(concluidos), f)
+    """
+    Grava o progresso de forma atômica (arquivo temporário + os.replace) e
+    tolerante a falhas: se a escrita falhar (ex.: OSError [Errno 22] por lock
+    transitório de sincronização em nuvem), apenas avisa e segue — os CSVs em
+    cache/ são a fonte de verdade e o resume é reconstruído a partir deles.
+    Antes esta falha propagava pela thread e abortava a extração inteira.
+    """
+    tmp = PROGRESSO_FILE.with_suffix(".json.tmp")
+    try:
+        with open(tmp, "w") as f:
+            json.dump(list(concluidos), f)
+        os.replace(tmp, PROGRESSO_FILE)
+    except OSError as e:
+        print(f"  [AVISO] Não foi possível salvar o progresso ({e}); extração continua.")
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except OSError:
+            pass
 
 def marcar_concluido(concluidos, chave):
     with _lock_progresso:
@@ -242,19 +309,19 @@ def tarefa_estado(session, estado, ano, concluidos):
 # DOWNLOAD
 # ─────────────────────────────────────────────
 def baixar(forcar=False):
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    CACHE_DIR.mkdir(exist_ok=True)
-    MUN_DIR.mkdir(exist_ok=True)
-
     municipios, estados = ler_entes()
 
     if forcar:
-        print("Modo --forcar: removendo cache anterior...")
-        for f in CACHE_DIR.glob("*.csv"):
-            f.unlink()
-        PROGRESSO_FILE.unlink(missing_ok=True)
+        print("Modo --forcar: fazendo backup do cache anterior e iniciando extração limpa...")
+        fazer_backup_output()
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
+        MUN_DIR.mkdir(exist_ok=True)
         concluidos = set()
     else:
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
+        MUN_DIR.mkdir(exist_ok=True)
         concluidos = carregar_progresso()
         if CACHE_DIR.exists() and any(CACHE_DIR.glob("*.csv")):
             print("Verificando cache para resume seguro (pode levar alguns instantes)...")

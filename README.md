@@ -24,18 +24,33 @@ SIOPE - Extração de Dados/
 │
 ├── Extrair Todas Receitas - Todos os Entes.py       ← script de extração completa via API
 ├── Dados SIOPE - ICMS e ISS.py                      ← script de consolidação (gera a planilha final)
+├── Comparar Extrações.py                            ← script de comparação entre duas extrações
 ├── Dados SIOPE - ICMS e ISS.xlsx                    ← planilha consolidada (saída)
 │
-└── Registro Receita - Todos Entes/                  ← pasta de saída da extração
-    ├── progresso.json                               ← controle de resume (tarefas concluídas)
-    ├── cache/                                       ← CSVs intermediários por UF (fonte de verdade)
-    │   ├── mun_XX.csv                               ← municípios do estado XX
-    │   └── est_todos.csv                            ← todos os estados
-    ├── Municipios/
-    │   ├── Municipios_XX.xlsx                       ← planilha por UF (divide em _parte2, _parte3... se >500k linhas)
-    │   └── ...
-    └── Estados.xlsx                                 ← todos os 27 estados (divide se >500k linhas)
+├── Registro Receita - Todos Entes/                  ← pasta de saída da extração VIGENTE
+│   ├── progresso.json                               ← controle de resume (tarefas concluídas)
+│   ├── cache/                                       ← CSVs intermediários por UF (fonte de verdade)
+│   │   ├── mun_XX.csv                               ← municípios do estado XX
+│   │   └── est_todos.csv                            ← todos os estados
+│   ├── Municipios/
+│   │   ├── Municipios_XX.xlsx                       ← planilha por UF (divide em _parte2, _parte3... se >500k linhas)
+│   │   └── ...
+│   └── Estados.xlsx                                 ← todos os 27 estados (divide se >500k linhas)
+│
+└── Dados Antigos/                                   ← HISTÓRICO das extrações anteriores
+    ├── Extração DD-MM-AA/                           ← uma pasta por extração arquivada
+    │   ├── cache/                                   ← CSVs daquela extração
+    │   ├── Municipios/                              ← Excel por UF daquela extração
+    │   ├── Estados.xlsx
+    │   ├── progresso.json
+    │   └── Dados SIOPE - ICMS e ISS (DD-MM-AA).xlsx ← consolidação vigente naquela data
+    └── Comparações/                                 ← relatórios de diferença entre extrações
+        └── Comparação <anterior> vs <nova>.txt
 ```
+
+> A pasta `Dados Antigos/` é o arquivo morto do projeto: guarda cada extração
+> passada por inteiro (cache, Excel por UF e a planilha consolidada daquela data),
+> além dos relatórios de comparação. Cada extração ocupa ~700 MB de cache.
 
 ---
 
@@ -125,7 +140,7 @@ Os maiores estados em número de municípios: MG (853), SP (645), RS (497), BA (
 ## Script Principal: `Extrair Todas Receitas - Todos os Entes.py`
 
 ### O que faz
-Baixa todos os registros de receita (período 6 = acumulado anual) para todos os 5.571 municípios e 27 estados, para os anos de 2019 a 2026, e salva em planilhas Excel organizadas por UF.
+Baixa todos os registros de receita (período 6 = acumulado anual) para todos os 5.571 municípios e 27 estados, para os anos de 2019 a 2025, e salva em planilhas Excel organizadas por UF.
 
 ### Colunas nas planilhas de saída
 
@@ -153,7 +168,7 @@ python "Extrair Todas Receitas - Todos os Entes.py" --baixar
 # Apenas compilar Excel a partir do cache já baixado
 python "Extrair Todas Receitas - Todos os Entes.py" --compilar
 
-# Redownload completo, ignorando todo o cache anterior
+# Redownload completo: faz backup do cache anterior e inicia extração limpa
 python "Extrair Todas Receitas - Todos os Entes.py" --forcar
 ```
 
@@ -161,12 +176,36 @@ python "Extrair Todas Receitas - Todos os Entes.py" --forcar
 
 | Variável                  | Padrão | Descrição                                         |
 |---------------------------|--------|---------------------------------------------------|
-| `ANOS`                    | 2019–2026 | Intervalo de anos a extrair                    |
+| `ANOS`                    | 2019–2025 | Intervalo de anos a extrair                    |
 | `PERIODO`                 | `6`    | Bimestre (6 = acumulado anual)                    |
 | `MAX_LINHAS`              | 500.000 | Limite de linhas por arquivo Excel               |
 | `MAX_WORKERS`             | `4`    | Threads paralelas de download                     |
 | `DELAY_ENTRE_CHAMADAS`    | `0.20s`| Pausa entre requisições por thread                |
 | `MAX_TENTATIVAS`          | `3`    | Tentativas em caso de erro na API                 |
+
+### Arquivamento automático da extração anterior (`--forcar`)
+
+Ao executar com `--forcar`, o script **move** a pasta `Registro Receita - Todos Entes` para `Dados Antigos/Extração DD-MM-AA` — onde a data é a do arquivo mais antigo no cache (data de início da extração anterior) — e então cria uma pasta limpa para a nova extração. Nada é deletado.
+
+Junto com a pasta, o script **copia a planilha consolidada vigente** (`Dados SIOPE - ICMS e ISS.xlsx`) para dentro do arquivo, renomeada como `Dados SIOPE - ICMS e ISS (DD-MM-AA).xlsx`. Assim cada pasta do histórico é autocontida: cache, Excel por UF e a consolidação daquela data.
+
+Se já existir um arquivamento com a mesma data, é adicionado sufixo numérico (`- 2`, `- 3`, ...).
+
+**Rotina recomendada a cada atualização da base:**
+
+```bash
+# 1. Extrai tudo de novo (arquiva a extração anterior automaticamente)
+python "Extrair Todas Receitas - Todos os Entes.py" --forcar
+
+# 2. Regera a planilha consolidada
+python "Dados SIOPE - ICMS e ISS.py"
+
+# 3. Documenta o que mudou em relação à extração anterior
+python "Comparar Extrações.py" ^
+    "Dados Antigos/Extração <data anterior>/Dados SIOPE - ICMS e ISS (<data anterior>).xlsx" ^
+    "Dados SIOPE - ICMS e ISS.xlsx" ^
+    "Dados Antigos/Comparações/Comparação <data anterior> vs <data nova>.txt"
+```
 
 ### Mecanismo de resume
 
@@ -290,6 +329,33 @@ Requer que os CSVs de cache já estejam gerados. Saída: `Dados SIOPE - ICMS e I
 
 ---
 
+## Script de Comparação: `Comparar Extrações.py`
+
+### O que faz
+Compara duas versões da planilha consolidada e gera um relatório em texto com tudo que mudou entre uma extração e outra. Serve para documentar cada atualização da base — os entes podem retificar valores ou passar a declarar exercícios que antes estavam em branco.
+
+### Como usar
+```bash
+python "Comparar Extrações.py" <planilha_anterior> <planilha_nova> <relatorio_saida>
+```
+
+Os relatórios ficam em `Dados Antigos/Comparações/`.
+
+### O que o relatório traz (por aba)
+
+| Seção | Conteúdo |
+|---|---|
+| Contagens | linhas antes/depois, novas, removidas, em comum, alteradas |
+| Linhas novas | entes/anos que passaram a declarar — totais por ANO e por UF, mais o detalhe UF/COD_IBGE/ANO |
+| Linhas removidas | entes/anos que deixaram de constar na fonte |
+| Resumo por métrica | quantas linhas mudaram em cada métrica e o delta somado em R$ |
+| Retificações | cada linha alterada, valor a valor: antes → depois, com a diferença |
+| Totais por métrica | soma da base inteira, antes e depois |
+
+A tolerância de comparação é de R$ 0,005 (meio centavo), para ignorar ruído de ponto flutuante.
+
+---
+
 ## Histórico de Alterações
 
 | Data       | Descrição                                                                 |
@@ -303,3 +369,10 @@ Requer que os CSVs de cache já estejam gerados. Saída: `Dados SIOPE - ICMS e I
 | 2026-05-19 | Correção (CSVs de cache): removidas linhas duplicadas dos arquivos `mun_GO.csv` (2.280), `mun_RO.csv` (580) e `est_todos.csv` (456), geradas por interrupções e retomadas da extração. |
 | 2026-05-19 | Melhoria (`Dados SIOPE - ICMS e ISS.py`): adicionado `drop_duplicates()` na leitura de todos os CSVs para proteção automática contra duplicatas residuais. |
 | 2026-05-19 | Melhoria (`Extrair Todas Receitas - Todos os Entes.py`): resume reconstrói o progresso diretamente dos CSVs ao iniciar (evita re-download de dados já gravados); progresso salvo a cada 10 tarefas (antes: 50); Ctrl+C salva o progresso antes de encerrar. |
+| 2026-06-05 | Ajuste (`Extrair Todas Receitas - Todos os Entes.py`): faixa de anos alterada de 2019–2026 para 2019–2025 (período 6 de 2026 não disponível até o final do ano). `--forcar` passa a fazer backup automático do cache anterior (renomeia a pasta com data da extração original) ao invés de deletar, preservando o histórico da última extração. |
+| 2026-09-25 | Reestruturação do histórico: criada a pasta `Dados Antigos/`, com uma subpasta por extração arquivada (cache + Excel por UF + consolidação daquela data) e `Comparações/` para os relatórios de diferença. Migrados para lá o backup de junho (`Extração 05-06-26`), o cache duplicado de junho que existia na pasta viva (`Extração 05-06-26 - 2`), a consolidação de 08-09-26 (`Extração 08-09-26 (apenas consolidação)` — só o resultado, o cache dessa data não está nesta pasta) e o comparativo junho×setembro feito manualmente. |
+| 2026-09-25 | Ajuste (`Extrair Todas Receitas - Todos os Entes.py`): `--forcar` passa a **mover** a extração anterior para `Dados Antigos/Extração DD-MM-AA` (antes criava pastas irmãs na raiz) e copia junto a planilha consolidada vigente, tornando cada pasta do histórico autocontida. |
+| 2026-09-25 | Correção (`Extrair Todas Receitas - Todos os Entes.py`): `salvar_progresso()` grava de forma atômica (arquivo temporário + `os.replace`) e não aborta mais a extração em caso de falha de escrita. Relevante nesta pasta por estar sob sincronização do OneDrive, onde locks transitórios podem causar `OSError [Errno 22]` — antes essa falha propagava pela thread e derrubava a extração inteira. |
+| 2026-09-25 | Criação do script `Comparar Extrações.py`: gera relatório de diferenças entre duas versões da planilha consolidada (linhas novas, removidas, retificações valor a valor e totais por métrica). Relatórios salvos em `Dados Antigos/Comparações/`. |
+| 2026-09-25 | Nova extração completa. 39.179 tarefas, 0 erros de API, 0 avisos de escrita, 7.039.603 linhas de cache (16:14–18:29). Resultado: 38.929 linhas (municípios) + 182 linhas (estados). Diferenças vs. 08-09-26: **MG passou a declarar ICMS estadual de 2024** (antes MG não tinha nenhum ano na aba Estados) — impacto de +R$ 81,53 bilhões, elevando o total de ICMS de R$ 4,231 tri para R$ 4,313 tri; 1 município novo (TO/170190/2025); 1 retificação de ISS (BA/292540/2024, de R$ 977.993,00 para R$ 136.765,77). |
+| 2026-09-25 | Observação sobre a fonte: o SIOPE segue sem declaração estadual de MG para 2019-2023 e 2025, e sem RS/2019 — a API retorna `ente: []`. Por isso a aba Estados tem 182 linhas, e não 189. |
