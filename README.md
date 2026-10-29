@@ -19,7 +19,8 @@ SIOPE - Extração de Dados/
 │
 ├── README.md                                        ← este arquivo
 ├── SIOPE-TCs_Especificacao_WS_2.1.pdf               ← manual oficial da API
-├── Regra de extração.docx                           ← regras de negócio e mapeamento de contas
+├── Regra de extração.docx                           ← regras de negócio e mapeamento de contas (versão vigente)
+├── Regras de extração - Histórico/                  ← versões anteriores da regra, com data e versão no nome
 ├── Lista de Entes.xlsx                              ← cadastro de municípios e estados (fonte dos códigos IBGE)
 │
 ├── Extrair Todas Receitas - Todos os Entes.py       ← script de extração completa via API
@@ -44,13 +45,16 @@ SIOPE - Extração de Dados/
     │   ├── Estados.xlsx
     │   ├── progresso.json
     │   └── Dados SIOPE - ICMS e ISS (DD-MM-AA).xlsx ← consolidação vigente naquela data
-    └── Comparações/                                 ← relatórios de diferença entre extrações
+    ├── Compilações anteriores/                      ← planilhas substituídas por mudança de REGRA (mesma extração)
+    │   └── Extração DD-MM-AA - regra vN/            ← planilha + script que a gerou
+    └── Comparações/                                 ← relatórios de diferença entre extrações ou regras
         └── Comparação <anterior> vs <nova>.txt
 ```
 
 > A pasta `Dados Antigos/` é o arquivo morto do projeto: guarda cada extração
 > passada por inteiro (cache, Excel por UF e a planilha consolidada daquela data),
-> além dos relatórios de comparação. Cada extração ocupa ~700 MB de cache.
+> as compilações substituídas por mudança de regra e os relatórios de comparação.
+> Cada extração ocupa ~700 MB de cache.
 
 ---
 
@@ -243,8 +247,15 @@ Ambas disponíveis no Anaconda por padrão. Python 3.13+ compatível.
 ### O que faz
 Lê os CSVs de cache gerados pelo script principal e produz a planilha `Dados SIOPE - ICMS e ISS.xlsx` com duas abas consolidadas, aplicando as regras de extração por faixa de ano (mudança de classificação PCASP).
 
+O script implementa a **`Regra de extração.docx` versão 4** (28/10/2026). O documento é a referência completa das regras; esta seção resume como elas estão no código.
+
 ### Regra de valor
-Para todas as métricas: `valor = abs(vlr_receita_realizada) - abs(vlr_outras_deducoes)`
+- **Geral:** `valor = abs(vlr_receita_realizada) - abs(vlr_outras_deducoes)`, conta a conta.
+- **Limiar de 10%** (`LIMIAR_DEDUCAO`), só no **ICMS dos Estados** e nas **Compensacoes**: se a dedução passar de 10% da receita realizada da mesma conta, ela é ignorada e vale só `abs(vlr_receita_realizada)`. Motivo: alguns entes lançam como "dedução" o repasse de 25% aos municípios ou o FUNDEB.
+- **2019–2020, deduções em conta própria** (nesses anos a coluna `vlr_outras_deducoes` vem zerada):
+  - ISS: `49111305000` é subtraída do ISS Principal, sem limiar.
+  - ICMS: `49111302000` é subtraída do ICMS Principal e `49111302001` do ICMS FECOP, com o limiar de 10%.
+- A dedução do FUNDEB (`vlr_deducao_fundeb`) não é descontada em nenhuma métrica.
 
 ### Aba Municípios — colunas
 
@@ -261,6 +272,7 @@ Para todas as métricas: `valor = abs(vlr_receita_realizada) - abs(vlr_outras_de
 | `ISS DA - Principal` | Dívida ativa do ISS |
 | `ISS DA - Multas e Juros` | Multas e juros da dívida ativa do ISS |
 | `ISS FECOP` | Adicional ISS - Fundo Municipal de Combate à Pobreza |
+| `Compensacoes` | Cota-parte da compensação das perdas de ICMS (LC 194/2022), 2023+. Não entra no ISS nem na Cota-Parte |
 
 ### Aba Estados — colunas
 
@@ -276,22 +288,34 @@ Para todas as métricas: `valor = abs(vlr_receita_realizada) - abs(vlr_outras_de
 | `ICMS DA - Principal` | Dívida ativa do ICMS |
 | `ICMS DA - Multas e Juros` | Multas e juros da dívida ativa do ICMS |
 | `ICMS FECOP` | Adicional ICMS - Fundo Estadual de Combate à Pobreza |
+| `Compensacoes` | Compensação das perdas de ICMS (LC 194/2022), 2023+. Não entra no ICMS |
 
 ### Mapeamento de códigos de conta por faixa de ano
 
+Contas separadas por "+" são somadas; "−" indica dedução.
+
 | Métrica | 2019–2020 | 2021–2022 | 2023–2026 |
 |---|---|---|---|
-| **ISS Principal** | `41113050100` | `11180231` | `11145111` |
-| **ISS Multas e Juros** | `41911400000` | `11180232` | `11145112` |
+| **ISS Principal** | `41113050100` − `49111305000` | `11180231` | `11145111` |
+| **ISS Multas e Juros** | `41911400000` | `11180232` + `11180235` + `11180236` | `11145112` + `11145115` + `11145116` |
 | **ISS DA - Principal** | `41931130000` | `11180233` | `11145113` |
-| **ISS DA - Multas e Juros** | `41913130000` | `11180234` | `11145114` |
+| **ISS DA - Multas e Juros** | `41913130000` | `11180234` + `11180237` + `11180238` | `11145114` + `11145117` + `11145118` |
 | **ISS FECOP** | `41113050200` | `11180240` | `11145120` |
 | **Cota-Parte** | `41722010100` | `17280110` | `17215000` |
-| **ICMS Principal** | `41113020100` | `11180211` | `11145011` |
-| **ICMS Multas e Juros** | `41911420000` | `11180212` | `11145012` |
+| **ICMS Principal** | `41113020100` − `49111302000`* | `11180211` | `11145011` |
+| **ICMS Multas e Juros** | `41911420000` | `11180212` + `11180215` + `11180216` | `11145012` + `11145015` + `11145016` |
 | **ICMS DA - Principal** | `41931150000` | `11180213` | `11145013` |
-| **ICMS DA - Multas e Juros** | `41913150000` | `11180215` | `11145014` |
-| **ICMS FECOP** | `41113020200` | `11180220` | `11145020` |
+| **ICMS DA - Multas e Juros** | `41913150000` | `11180214` + `11180217` + `11180218` | `11145014` + `11145017` + `11145018` |
+| **ICMS FECOP** | `41113020200` − `49111302001`* | `11180220` | `11145020` |
+| **Compensacoes (Municípios)** | — | — | `17295300` + `17196200` + `17196300` |
+| **Compensacoes (Estados)** | — | — | `17196200` + `17196300` (+ `17295300`) |
+
+\* No ICMS dos Estados e nas Compensacoes, toda dedução (coluna ou conta própria) está sujeita ao limiar de 10%.
+
+Nas contas de 8 dígitos, o último dígito indica o desdobramento: 2 e 4 são a forma **agrupada** de multas e juros; 5 a 8, a forma **separada**. Cada ente usa uma das duas, por isso as duas são somadas.
+
+### Compensacoes — regra de duplicidade
+Se, no mesmo ente-ano, a soma da rubrica dos Estados (`17196200` + `17196300`) for **igual** à rubrica dos Municípios (`17295300`), é o mesmo valor lançado duas vezes: o script mantém só a rubrica dos Municípios (função `aplicar_duplicidade_compensacao`). Valores diferentes são tratados como parcelas distintas e somados. Os municípios que lançaram na rubrica dos Estados entram normalmente, porque município só recebe essa compensação como cota-parte.
 
 ### Tratamento especial do DF
 
@@ -300,6 +324,8 @@ O Distrito Federal é ao mesmo tempo **Estado e Município**, portanto:
 - O script extrai essas linhas diretamente de `est_todos.csv`, filtrando `sgl_uf == "DF"`, e as inclui na **aba Municipios** com `COD_IBGE = 530010`.
 - Os dados de **ICMS** do DF continuam na **aba Estados** normalmente.
 - O DF **não recebe Cota-Parte do ICMS** (é o próprio estado arrecadador), portanto essa coluna ficará vazia para o DF.
+- A **compensação** da LC 194 o DF recebe como Estado: ela entra na **aba Estados**, e na aba Municipios a coluna `Compensacoes` do DF fica vazia.
+- Em 2019–2020 a dedução `49111305000` também é subtraída do ISS Principal do DF (`41113050000`).
 
 #### Contas de ISS exclusivas do DF em 2019-2020
 
@@ -354,6 +380,8 @@ Os relatórios ficam em `Dados Antigos/Comparações/`.
 
 A tolerância de comparação é de R$ 0,005 (meio centavo), para ignorar ruído de ponto flutuante.
 
+Colunas que existem em só uma das versões (por exemplo, uma métrica nova) são comparadas contra vazio e listadas no cabeçalho de cada aba. O script também serve para comparar duas compilações da **mesma extração** com regras diferentes. Nesse caso, onde o relatório diz "retificações", leia "valores alterados pela regra".
+
 ---
 
 ## Histórico de Alterações
@@ -376,3 +404,8 @@ A tolerância de comparação é de R$ 0,005 (meio centavo), para ignorar ruído
 | 2026-09-25 | Criação do script `Comparar Extrações.py`: gera relatório de diferenças entre duas versões da planilha consolidada (linhas novas, removidas, retificações valor a valor e totais por métrica). Relatórios salvos em `Dados Antigos/Comparações/`. |
 | 2026-09-25 | Nova extração completa. 39.179 tarefas, 0 erros de API, 0 avisos de escrita, 7.039.603 linhas de cache (16:14–18:29). Resultado: 38.929 linhas (municípios) + 182 linhas (estados). Diferenças vs. 08-09-26: **MG passou a declarar ICMS estadual de 2024** (antes MG não tinha nenhum ano na aba Estados) — impacto de +R$ 81,53 bilhões, elevando o total de ICMS de R$ 4,231 tri para R$ 4,313 tri; 1 município novo (TO/170190/2025); 1 retificação de ISS (BA/292540/2024, de R$ 977.993,00 para R$ 136.765,77). |
 | 2026-09-25 | Observação sobre a fonte: o SIOPE segue sem declaração estadual de MG para 2019-2023 e 2025, e sem RS/2019 — a API retorna `ente: []`. Por isso a aba Estados tem 182 linhas, e não 189. |
+| 2026-10-28 | Regra de extração revisada (versões 2, 3 e 4 do documento, todas em 28/10/2026). Versões anteriores do documento arquivadas na nova pasta `Regras de extração - Histórico/`. Resumo: ISS e ICMS passam a somar as contas separadas de multas e juros (último dígito 5 a 8); a `11180215` ("Multas") sai de ICMS DA – Multas e Juros e vai para ICMS Multas e Juros; deduções de 2019–2020 em conta própria (`49111305000` no ISS; `49111302000`/`49111302001` no ICMS); limiar de 10% nas deduções do ICMS dos Estados e das Compensacoes; nova métrica de compensação das perdas de ICMS (LC 194/2022). |
+| 2026-10-28 | Script `Dados SIOPE - ICMS e ISS.py` reescrito para a regra v4: mapeamento com várias contas por métrica, deduções em conta própria, limiar de 10% (`LIMIAR_DEDUCAO`), regra de duplicidade das compensações e nova coluna **`Compensacoes`** (última coluna das duas abas). Script anterior guardado junto com a planilha anterior. |
+| 2026-10-28 | **Nova compilação sobre a MESMA extração de 25/09/2026**: o cache não mudou, só as regras de negócio. Compilação anterior (regra v1) arquivada em `Dados Antigos/Compilações anteriores/Extração 25-09-26 - regra v1/`, junto com o script que a gerou. Resultado: 38.929 linhas (municípios) + 182 (estados), as mesmas chaves. Diferenças pela regra (relatório em `Dados Antigos/Comparações/Comparação 25-09-26 regra v1 vs regra v4 (mesma extração).txt`): ISS −R$ 233,2 mi em 2019–2020 e +R$ 721,6 mi em 2021–2025; ICMS −R$ 61,7 mi em 2019–2020 e +R$ 117,7 bi em 2021–2025 (sobretudo deduções acima de 10%, que deixaram de ser descontadas; ex.: MG/2024 passa de R$ 81,5 bi para R$ 101,7 bi); Cota-Parte sem alteração; Compensacoes: R$ 2,52 bi nos municípios e R$ 21,86 bi nos estados (2023–2025). Alteradas 5.278 linhas na aba Municipios e 107 na aba Estados. |
+| 2026-10-28 | Ajuste (`Comparar Extrações.py`): passa a aceitar colunas presentes em só uma das versões (comparadas contra vazio), necessário para a nova coluna `Compensacoes`. |
+| 2026-10-28 | Observação: 4 municípios-ano ficam com ISS negativo. Três (PI/220375/2020, PI/220300/2020, RS/430690/2020) vêm da dedução `49111305000` maior que o próprio ISS e estão registrados na seção 2.5 da regra. O quarto, RS/430471/2021, **já era negativo na regra anterior**: o município lançou na coluna de deduções R$ 161.572,55, valor maior que o ISS Principal de R$ 139.466,74. |

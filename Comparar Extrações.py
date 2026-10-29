@@ -31,6 +31,13 @@ def comparar_aba(dn, dv, aba, out):
     """Compara uma aba e escreve o resultado em `out` (lista de linhas)."""
     metricas = [c for c in dn.columns if c not in CHAVE + ["BASE"]]
 
+    # Colunas que só existem em uma das versões (ex.: métrica nova): a ausente vale vazio
+    col_novas     = [c for c in metricas if c not in dv.columns]
+    col_removidas = [c for c in dv.columns if c not in dn.columns and c not in CHAVE + ["BASE"]]
+    dv = dv.copy()
+    for c in col_novas:
+        dv[c] = float("nan")
+
     kn = dn.set_index(CHAVE)
     kv = dv.set_index(CHAVE)
 
@@ -47,6 +54,10 @@ def comparar_aba(dn, dv, aba, out):
     out.append(f"  linhas novas    : {len(novas):>8,}")
     out.append(f"  linhas removidas: {len(removidas):>8,}")
     out.append(f"  linhas em comum : {len(comuns):>8,}")
+    if col_novas:
+        out.append(f"  colunas novas   : {', '.join(col_novas)} (comparadas contra vazio)")
+    if col_removidas:
+        out.append(f"  colunas removidas: {', '.join(col_removidas)}")
 
     a = kn.loc[comuns, metricas].fillna(0)
     b = kv.loc[comuns, metricas].fillna(0)
